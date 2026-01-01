@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Movies Explorer',
-  description: 'Explore and manage your favorite movies',
+  title: 'Movies Explorer | Your Personal Cinema',
+  description: 'Discover, explore, and manage your favorite films with a Netflix-inspired experience',
 }
 
 export default function RootLayout({

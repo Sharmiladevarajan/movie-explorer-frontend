@@ -40,43 +40,46 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="glass-effect border-l-4 border-red-500 text-red-300 px-5 py-4 rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <span>{error}</span>
+          </div>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Title *
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">🎬</span> Title *
         </label>
         <input
           type="text"
           required
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Director *
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">👤</span> Director *
         </label>
         <input
           type="text"
           required
           value={formData.director_name}
           onChange={(e) => setFormData({ ...formData, director_name: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Release Year *
+          <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+            <span className="text-lg">📅</span> Release Year *
           </label>
           <input
             type="number"
@@ -85,13 +88,13 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
             max="2030"
             value={formData.release_year}
             onChange={(e) => setFormData({ ...formData, release_year: parseInt(e.target.value) })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Rating (0-10)
+          <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+            <span className="text-lg">★</span> Rating (0-10)
           </label>
           <input
             type="number"
@@ -100,34 +103,34 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
             max="10"
             value={formData.rating || ''}
             onChange={(e) => setFormData({ ...formData, rating: e.target.value ? parseFloat(e.target.value) : undefined })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Genre *
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">🎭</span> Genre *
         </label>
         <input
           type="text"
           required
           value={formData.genre_name}
           onChange={(e) => setFormData({ ...formData, genre_name: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
           placeholder="Action, Drama, Comedy, etc."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">📝</span> Description
         </label>
         <textarea
           rows={4}
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all resize-none"
         />
       </div>
 
@@ -135,17 +138,17 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg font-medium transition"
+          className="flex-1 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:from-gray-700 disabled:to-gray-600 disabled:text-gray-400 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-purple-500/50 disabled:shadow-none"
         >
-          {loading ? 'Saving...' : movie ? 'Update Movie' : 'Add Movie'}
+          {loading ? '⏳ Saving...' : movie ? '✓ Update Movie' : '✓ Add Movie'}
         </button>
         <button
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="flex-1 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-medium transition"
+          className="flex-1 glass-effect hover:bg-white/10 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 border border-purple-500/30 hover:border-purple-500/50"
         >
-          Cancel
+          ✕ Cancel
         </button>
       </div>
     </form>
