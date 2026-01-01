@@ -2,11 +2,14 @@ export interface Movie {
   id: number
   title: string
   director: string
+  director_id?: number
   release_year: number
   genre: string
   rating?: number
   description?: string
   created_at: string
+  cast?: Actor[]
+  reviews?: Review[]
 }
 
 export interface MovieInput {
@@ -15,6 +18,31 @@ export interface MovieInput {
   release_year: number
   genre_name: string
   rating?: number
+  description?: string
+}
+
+export interface Actor {
+  id: number
+  name: string
+  bio?: string
+  birth_year?: number
+  role?: string
+  movies?: Movie[]
+  movie_count?: number
+}
+
+export interface Director {
+  id: number
+  name: string
+  bio?: string
+  birth_year?: number
+  movies?: Movie[]
+  movie_count?: number
+}
+
+export interface Genre {
+  id: number
+  name: string
   description?: string
 }
 

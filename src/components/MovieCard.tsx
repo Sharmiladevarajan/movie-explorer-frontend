@@ -1,4 +1,5 @@
 import type { Movie } from '@/types/movie'
+import { useRouter } from 'next/navigation'
 
 interface MovieCardProps {
   movie: Movie
@@ -7,10 +8,15 @@ interface MovieCardProps {
 }
 
 export function MovieCard({ movie, onEdit, onDelete }: MovieCardProps) {
+  const router = useRouter()
+
   return (
     <div className="group relative glass-effect rounded-2xl overflow-hidden border border-purple-500/20 hover:border-cyan-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/30">
-      {/* Movie Poster Placeholder */}
-      <div className="relative h-56 bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30 overflow-hidden">
+      {/* Movie Poster Placeholder - clickable */}
+      <div 
+        className="relative h-56 bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30 overflow-hidden cursor-pointer"
+        onClick={() => router.push(`/movies/${movie.id}`)}
+      >
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A24] via-transparent to-transparent"></div>
         
@@ -34,8 +40,11 @@ export function MovieCard({ movie, onEdit, onDelete }: MovieCardProps) {
       </div>
 
       <div className="p-5">
-        {/* Title */}
-        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-400 group-hover:to-cyan-400 transition-all duration-300 line-clamp-2">
+        {/* Title - clickable */}
+        <h3 
+          onClick={() => router.push(`/movies/${movie.id}`)}
+          className="text-xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-400 group-hover:to-cyan-400 transition-all duration-300 line-clamp-2 cursor-pointer"
+        >
           {movie.title}
         </h3>
         
