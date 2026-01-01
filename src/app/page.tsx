@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { HorizontalMovieScroll } from '@/components/HorizontalMovieScroll'
 import { MovieForm } from '@/components/MovieForm'
 import { SearchBar } from '@/components/SearchBar'
+import { MovieProvider, useMovie } from '@/contexts/MovieContext'
 import { api } from '@/lib/api'
 import type { Movie } from '@/types/movie'
 
@@ -22,87 +23,204 @@ const heroQuotes = [
   { quote: "Why so serious?", movie: "The Dark Knight" },
 ]
 
-export default function NetflixStyleHome() {
+function HomeContent() {
+  const { isAdmin, setIsAdmin, editingMovie, setEditingMovie, showForm, setShowForm, handleEdit } = useMovie()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editingMovie, setEditingMovie] = useState<Movie | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<Movie[]>([])
+  const [searching, setSearching] = useState(false)
   const [currentQuote, setCurrentQuote] = useState(0)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
-      setLoading(true)
+      if (!append) setLoading(true)
+      else setLoadingMore(true)
+      
       const data = await api.getMoviesGroupedByGenre(10)
-      setCategories(data.categories)
+      
+      if (append) {
+        // Merge new data with existing categories
+        setCategories(prev => {
+          const merged = [...prev]
+          data.categories.forEach((newCat: Category) => {
+            const existingIndex = merged.findIndex(c => c.genre_id === newCat.genre_id)
+            if (existingIndex >= 0) {
+              // Add movies to existing category
+              merged[existingIndex].movies = [...merged[existingIndex].movies, ...newCat.movies]
+            } else {
+              // Add new category
+              merged.push(newCat)
+            }
+          })
+          return merged
+        })
+        
+        // Check if there are more movies to load
+        if (data.categories.length === 0 || data.categories.every((cat: Category) => cat.movies.length === 0)) {
+          setHasMore(false)
+        }
+      } else {
+        setCategories(data.categories)
+        setHasMore(true)
+        setPage(1)
+      }
     } catch (error) {
       console.error('Error fetching categories:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
+  }, [])
 
-  const handleSearch = async (term: string) => {
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !isSearchMode) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      fetchCategories(nextPage, true)
+    }
+  }, [loadingMore, hasMore, page, fetchCategories])
+
+  const handleSearch = useCallback(async (term: string) => {
     setSearchTerm(term)
+    
     if (!term.trim()) {
       setSearchResults([])
+      setSearching(false)
+      fetchCategories()
       return
     }
     
     try {
+      setSearching(true)
       const data = await api.searchMovies(term)
-      setSearchResults(data.movies)
+      setSearchResults(data.movies || [])
     } catch (error) {
       console.error('Error searching movies:', error)
+      setSearchResults([])
+    } finally {
+      setSearching(false)
     }
-  }
+  }, [fetchCategories])
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this movie?')) return
+  // Group search results by genre
+  const searchResultsByGenre = useMemo(() => {
+    if (searchResults.length === 0) return []
     
+    const grouped = searchResults.reduce((acc, movie) => {
+      const genre = movie.genre || 'Other'
+      if (!acc[genre]) {
+        acc[genre] = []
+      }
+      acc[genre].push(movie)
+      return acc
+    }, {} as Record<string, Movie[]>)
+    
+    return Object.entries(grouped).map(([genre, movies]) => ({
+      genre_name: genre,
+      movies: movies
+    }))
+  }, [searchResults])
+
+  const handleDelete = useCallback(async (id: number) => {
     try {
       await api.deleteMovie(id)
-      fetchCategories()
+      await fetchCategories()
       if (searchTerm) {
-        handleSearch(searchTerm)
+        await handleSearch(searchTerm)
       }
     } catch (error) {
       console.error('Error deleting movie:', error)
     }
-  }
+  }, [fetchCategories, handleSearch, searchTerm])
 
-  const handleEdit = (movie: Movie) => {
-    setEditingMovie(movie)
-    setShowForm(true)
-  }
-
-  const handleFormSuccess = () => {
+  const handleFormSuccess = useCallback(() => {
     setShowForm(false)
     setEditingMovie(null)
     fetchCategories()
     if (searchTerm) {
       handleSearch(searchTerm)
     }
-  }
+  }, [fetchCategories, handleSearch, searchTerm])
 
-  const handleFormCancel = () => {
+  const handleFormCancel = useCallback(() => {
     setShowForm(false)
     setEditingMovie(null)
-  }
+  }, [setShowForm, setEditingMovie])
+
+  const handleAddMovie = useCallback(() => {
+    setEditingMovie(null)
+    setShowForm(true)
+  }, [setEditingMovie, setShowForm])
+
+  // Filter categories to show only those with movies
+  const displayCategories = useMemo(() => {
+    return categories.filter(cat => cat.movies && cat.movies.length > 0)
+  }, [categories])
+
+  // Determine if we're showing search results
+  const isSearchMode = searchTerm.trim().length > 0
 
   useEffect(() => {
     fetchCategories()
+  }, [fetchCategories])
+
+  useEffect(() => {
     const quoteInterval = setInterval(() => {
       setCurrentQuote((prev) => (prev + 1) % heroQuotes.length)
     }, 5000)
     return () => clearInterval(quoteInterval)
   }, [])
 
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current || isSearchMode) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(loadMoreRef.current)
+
+    return () => observer.disconnect()
+  }, [loadMore, isSearchMode])
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-purple-900">
+      {/* Profile Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="glass-effect rounded-full p-2 border border-purple-500/30 hover:border-purple-500/50 transition-all">
+          <button
+            onClick={() => setIsAdmin(!isAdmin)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white/10 transition-all"
+            title={isAdmin ? "Switch to User Mode" : "Switch to Admin Mode"}
+          >
+            <div className="relative">
+              {isAdmin ? (
+                <span className="text-2xl">👨‍💼</span>
+              ) : (
+                <span className="text-2xl">👤</span>
+              )}
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
+            </div>
+            <span className="text-white font-semibold text-sm">
+              {isAdmin ? 'Admin' : 'User'}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Hero Section */}
-      <div className="relative h-[70vh] mb-8 overflow-hidden">
+      <div className="relative h-[60vh] mb-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-blue-900/30 to-cyan-900/40">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1920')] bg-cover bg-center opacity-15"></div>
         </div>
@@ -123,35 +241,46 @@ export default function NetflixStyleHome() {
               <p className="text-purple-400 text-sm mt-1">— {heroQuotes[currentQuote].movie}</p>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={() => {
-                  setEditingMovie(null)
-                  setShowForm(true)
-                }}
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
-              >
-                🎬 Add New Movie
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={handleAddMovie}
+                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+                >
+                  🎬 Add New Movie
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="container mx-auto px-4 md:px-8 mb-8">
+      <div className="container mx-auto px-4 md:px-8 mb-4">
         <SearchBar onSearch={handleSearch} />
       </div>
 
       {/* Movie Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl my-8">
-            <MovieForm
-              movie={editingMovie}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-            />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl max-h-[90vh] glass-effect rounded-2xl border border-purple-500/30 overflow-hidden">
+            {/* Close Button */}
+            <button
+              onClick={handleFormCancel}
+              className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full glass-effect hover:bg-red-500/20 border border-purple-500/30 hover:border-red-500/50 transition-all"
+              title="Close"
+            >
+              <span className="text-white text-2xl leading-none">×</span>
+            </button>
+            
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto max-h-[90vh] p-6">
+              <MovieForm
+                movie={editingMovie}
+                onSuccess={handleFormSuccess}
+                onCancel={handleFormCancel}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -165,69 +294,88 @@ export default function NetflixStyleHome() {
               <span className="text-white text-lg font-semibold">Loading movies...</span>
             </div>
           </div>
-        ) : searchTerm && searchResults.length > 0 ? (
+        ) : isSearchMode ? (
           /* Search Results */
-          <div className="px-4 md:px-8">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              Search Results for "{searchTerm}"
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {searchResults.map((movie) => (
-                <div key={movie.id} className="opacity-0 animate-fadeIn">
-                  <div
-                    onClick={() => window.location.href = `/movies/${movie.id}`}
-                    className="cursor-pointer group transition-transform duration-300 hover:scale-105"
-                  >
-                    <div className="relative h-96 rounded-lg overflow-hidden bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30 border border-purple-500/20 hover:border-cyan-500/50 transition-all">
-                      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
-                      
-                      {movie.rating && (
-                        <div className="absolute top-3 right-3 glass-effect px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-yellow-400/30">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-white font-bold text-sm">{movie.rating}</span>
-                        </div>
-                      )}
-
-                      <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
-                        <h3 className="text-white font-bold text-lg line-clamp-2">{movie.title}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-300">
-                          <span>{movie.release_year}</span>
-                          <span>•</span>
-                          <span>{movie.genre}</span>
-                        </div>
-                        <p className="text-gray-400 text-xs">Director: {movie.director}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          searching ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
+                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-white text-lg font-semibold">Searching...</span>
+              </div>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="space-y-6">
+              <div className="px-4 md:px-8">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+                  Search Results for "{searchTerm}" ({searchResults.length} found)
+                </h2>
+              </div>
+              
+              {/* Display search results grouped by genre */}
+              {searchResultsByGenre.map((group, index) => (
+                <HorizontalMovieScroll
+                  key={`search-${group.genre_name}-${index}`}
+                  title={group.genre_name}
+                  movies={group.movies}
+                  isAdmin={isAdmin}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               ))}
             </div>
-          </div>
-        ) : searchTerm && searchResults.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-xl">No movies found for "{searchTerm}"</p>
-          </div>
+          ) : (
+            <div className="text-center py-20">
+              <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
+                <p className="text-gray-400 text-xl mb-2">No movies found for "{searchTerm}"</p>
+                <p className="text-gray-500 text-sm">Try searching with different keywords</p>
+              </div>
+            </div>
+          )
         ) : (
           /* Netflix-style Categories */
-          <div className="space-y-12">
-            {categories.map((category) => (
+          <div className="space-y-6" key={`categories-${displayCategories.length}`}>
+            {displayCategories.map((category) => (
               <HorizontalMovieScroll
                 key={category.genre_id}
                 title={category.genre_name}
                 description={category.genre_description || undefined}
                 movies={category.movies}
+                isAdmin={isAdmin}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))}
 
-            {categories.length === 0 && (
+            {displayCategories.length === 0 && !loading && (
               <div className="text-center py-20">
-                <p className="text-gray-400 text-xl">No movies available. Add some movies to get started!</p>
+                <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
+                  <p className="text-gray-400 text-xl mb-2">No movies available</p>
+                  <p className="text-gray-500 text-sm">Add some movies to get started!</p>
+                </div>
+              </div>
+            )}
+            
+            {!isSearchMode && hasMore && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {loadingMore && (
+                  <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
+                    <div className="w-6 h-6 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-white text-sm font-semibold">Loading more movies...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
       </div>
     </main>
+  )
+}
+
+export default function NetflixStyleHome() {
+  return (
+    <MovieProvider>
+      <HomeContent />
+    </MovieProvider>
   )
 }
