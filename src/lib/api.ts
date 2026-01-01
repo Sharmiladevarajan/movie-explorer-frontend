@@ -75,4 +75,19 @@ export const api = {
     const response = await apiClient.get<Actor>(`/api/actors/${id}`)
     return response.data
   },
+
+  async getMoviesGroupedByGenre(limitPerGenre = 10, genres?: string) {
+    const params: any = { limit_per_genre: limitPerGenre }
+    if (genres) params.genres = genres
+    const response = await apiClient.get<{ categories: any[]; total_categories: number }>('/api/movies/by-genre/grouped', { params })
+    return response.data
+  },
+
+  async getMoviesByGenrePaginated(genreName: string, limit = 20, offset = 0) {
+    const response = await apiClient.get<{ movies: Movie[]; count: number; total: number; has_more: boolean }>(
+      `/api/movies/genre/${genreName}`,
+      { params: { limit, offset } }
+    )
+    return response.data
+  },
 }
