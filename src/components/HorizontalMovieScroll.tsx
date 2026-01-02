@@ -82,6 +82,7 @@ export function HorizontalMovieScroll({
   // Show horizontal scroll for any number of movies
   const showArrows = movies.length > 3
 
+
   return (
     <div className="mb-6">
       {/* Category Header */}
@@ -123,9 +124,31 @@ export function HorizontalMovieScroll({
               className="flex-none w-60 cursor-pointer group/card"
             >
               {/* Movie Card */}
-              <div className="relative h-80 rounded-lg overflow-hidden bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30 border border-purple-500/20 hover:border-cyan-500/50 transition-all duration-300 transform hover:scale-105 hover:z-10">
+              <div className="relative h-80 rounded-lg overflow-hidden bg-slate-900/90 border border-purple-500/20 hover:border-cyan-500/50 transition-all duration-300 transform hover:scale-105 hover:z-10">
                 {/* Poster Background */}
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400')] bg-cover bg-center opacity-20 group-hover/card:opacity-30 transition-opacity"></div>
+                {movie.image_url ? (
+                  <>
+                    <img 
+                      src={movie.image_url} 
+                      alt={movie.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:scale-110 transition-all duration-500"
+                      onLoad={(e) => {
+                        // Fade in smoothly once loaded
+                        e.currentTarget.style.opacity = '0.9';
+                      }}
+                      onError={(e) => {
+                        // Fallback to default background if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement?.parentElement;
+                        if (parent) {
+                          parent.style.background = 'linear-gradient(135deg, rgba(109, 40, 217, 0.3), rgba(59, 130, 246, 0.3), rgba(6, 182, 212, 0.3))';
+                        }
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30"></div>
+                )}
                 
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
