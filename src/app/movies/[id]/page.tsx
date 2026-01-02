@@ -1,30 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
-import type { Movie } from '@/types/movie'
+import { useGetMovieQuery } from '@/store/api/moviesApi'
 
 export default function MovieDetail({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const [movie, setMovie] = useState<Movie | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: movie, isLoading, isError } = useGetMovieQuery(parseInt(params.id))
 
-  useEffect(() => {
-    const fetchMovie = async () => {
-      try {
-        const data = await api.getMovie(parseInt(params.id))
-        setMovie(data)
-      } catch (error) {
-        console.error('Error fetching movie:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchMovie()
-  }, [params.id])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Loading...</div>
@@ -32,7 +15,7 @@ export default function MovieDetail({ params }: { params: { id: string } }) {
     )
   }
 
-  if (!movie) {
+  if (isError || !movie) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Movie not found</div>

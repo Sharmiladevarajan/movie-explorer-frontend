@@ -10,7 +10,7 @@ interface HorizontalMovieScrollProps {
   description?: string
   isAdmin?: boolean
   onEdit?: (movie: Movie) => void
-  onDelete?: (id: number) => void
+  onDelete?: (movie: Movie) => void
 }
 
 export function HorizontalMovieScroll({ 
@@ -70,10 +70,10 @@ export function HorizontalMovieScroll({
     if (onEdit) onEdit(movie)
   }, [onEdit])
 
-  const handleDelete = useCallback((e: React.MouseEvent, id: number) => {
+  const handleDelete = useCallback((e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation()
-    if (onDelete && confirm('Are you sure you want to delete this movie?')) {
-      onDelete(id)
+    if (onDelete) {
+      onDelete(movie)
     }
   }, [onDelete])
 
@@ -172,7 +172,7 @@ export function HorizontalMovieScroll({
                       <span className="text-blue-400 text-sm">✏️</span>
                     </button>
                     <button
-                      onClick={(e) => handleDelete(e, movie.id)}
+                      onClick={(e) => handleDelete(e, movie)}
                       className="w-8 h-8 glass-effect rounded-full flex items-center justify-center border border-red-500/30 hover:border-red-500/70 hover:bg-red-500/20 transition-all"
                       title="Delete"
                     >

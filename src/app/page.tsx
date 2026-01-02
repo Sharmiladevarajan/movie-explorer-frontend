@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { HorizontalMovieScroll } from '@/components/HorizontalMovieScroll'
 import { MovieForm } from '@/components/MovieForm'
 import { SearchBar } from '@/components/SearchBar'
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 import { MovieProvider, useMovie } from '@/contexts/MovieContext'
-import { api } from '@/lib/api'
+import { useGetMoviesQuery, useLazySearchMoviesQuery, useDeleteMovieMutation } from '@/store/api/moviesApi'
 import type { Movie } from '@/types/movie'
 
 interface Category {
@@ -25,127 +26,86 @@ const heroQuotes = [
 
 function HomeContent() {
   const { isAdmin, setIsAdmin, editingMovie, setEditingMovie, showForm, setShowForm, handleEdit } = useMovie()
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [searchResults, setSearchResults] = useState<Movie[]>([])
-  const [searching, setSearching] = useState(false)
   const [currentQuote, setCurrentQuote] = useState(0)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [movieToDelete, setMovieToDelete] = useState<Movie | null>(null)
 
-  const fetchCategories = useCallback(async (pageNum: number = 1, append: boolean = false) => {
-    try {
-      if (!append) setLoading(true)
-      else setLoadingMore(true)
-      
-      const data = await api.getMovies({ limit_per_genre: 10 })
-      
-      if (append) {
-        // Merge new data with existing categories
-        setCategories(prev => {
-          const merged = [...prev]
-          data.categories.forEach((newCat: Category) => {
-            const existingIndex = merged.findIndex(c => c.genre_id === newCat.genre_id)
-            if (existingIndex >= 0) {
-              // Add movies to existing category
-              merged[existingIndex].movies = [...merged[existingIndex].movies, ...newCat.movies]
-            } else {
-              // Add new category
-              merged.push(newCat)
-            }
-          })
-          return merged
-        })
-        
-        // Check if there are more movies to load
-        if (data.categories.length === 0 || data.categories.every((cat: Category) => cat.movies.length === 0)) {
-          setHasMore(false)
-        }
-      } else {
-        setCategories(data.categories)
-        setHasMore(true)
-        setPage(1)
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
-    }
-  }, [])
+  // RTK Query hooks
+  const { data: moviesData, isLoading, isError, refetch } = useGetMoviesQuery({ limit_per_genre: 10 })
+  const [searchMovies, { data: searchData, isLoading: isSearching }] = useLazySearchMoviesQuery()
+  const [deleteMovie, { isLoading: isDeleting }] = useDeleteMovieMutation()
 
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !isSearchMode) {
-      const nextPage = page + 1
-      setPage(nextPage)
-      fetchCategories(nextPage, true)
-    }
-  }, [loadingMore, hasMore, page, fetchCategories])
+  const categories = moviesData?.categories || []
+
+  const fetchCategories = useCallback(() => {
+    refetch()
+  }, [refetch])
 
   const handleSearch = useCallback(async (term: string) => {
     setSearchTerm(term)
     
     if (!term.trim()) {
-      setSearchResults([])
-      setSearching(false)
-      fetchCategories()
       return
     }
     
     try {
-      setSearching(true)
-      const data = await api.searchMovies(term)
-      setSearchResults(data.movies || [])
+      await searchMovies(term).unwrap()
     } catch (error) {
       console.error('Error searching movies:', error)
-      setSearchResults([])
-    } finally {
-      setSearching(false)
     }
-  }, [fetchCategories])
+  }, [searchMovies])
 
   // Group search results by genre
   const searchResultsByGenre = useMemo(() => {
-    if (searchResults.length === 0) return []
+    const searchResults = searchData?.movies || []
+    if (!searchResults.length) return []
     
-    const grouped = searchResults.reduce((acc, movie) => {
-      const genre = movie.genre || 'Other'
-      if (!acc[genre]) {
-        acc[genre] = []
-      }
+    const grouped = searchResults.reduce((acc: { [key: string]: Movie[] }, movie) => {
+      const genre = movie.genre || 'Unknown'
+      if (!acc[genre]) acc[genre] = []
       acc[genre].push(movie)
       return acc
-    }, {} as Record<string, Movie[]>)
+    }, {})
     
-    return Object.entries(grouped).map(([genre, movies]) => ({
-      genre_name: genre,
-      movies: movies
+    return Object.entries(grouped).map(([genre_name, movies]) => ({
+      genre_name,
+      movies,
     }))
-  }, [searchResults])
+  }, [searchData])
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleDelete = useCallback((movie: Movie) => {
+    setMovieToDelete(movie)
+    setDeleteModalOpen(true)
+  }, [])
+
+  const confirmDelete = useCallback(async () => {
+    if (!movieToDelete) return
+    
     try {
-      await api.deleteMovie(id)
-      await fetchCategories()
+      await deleteMovie(movieToDelete.id).unwrap()
+      setDeleteModalOpen(false)
+      setMovieToDelete(null)
+      
+      // Refresh search results if we're in search mode
       if (searchTerm) {
-        await handleSearch(searchTerm)
+        await searchMovies(searchTerm)
       }
     } catch (error) {
       console.error('Error deleting movie:', error)
     }
-  }, [fetchCategories, handleSearch, searchTerm])
+  }, [movieToDelete, deleteMovie, searchTerm, searchMovies])
 
   const handleFormSuccess = useCallback(() => {
     setShowForm(false)
     setEditingMovie(null)
-    fetchCategories()
+    
+    // Refresh data
+    refetch()
     if (searchTerm) {
-      handleSearch(searchTerm)
+      searchMovies(searchTerm)
     }
-  }, [fetchCategories, handleSearch, searchTerm])
+  }, [setShowForm, setEditingMovie, refetch, searchTerm, searchMovies])
 
   const handleFormCancel = useCallback(() => {
     setShowForm(false)
@@ -202,33 +162,11 @@ function HomeContent() {
   const isSearchMode = searchTerm.trim().length > 0
 
   useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
-
-  useEffect(() => {
     const quoteInterval = setInterval(() => {
       setCurrentQuote((prev) => (prev + 1) % heroQuotes.length)
     }, 5000)
     return () => clearInterval(quoteInterval)
   }, [])
-
-  // Infinite scroll observer
-  useEffect(() => {
-    if (!loadMoreRef.current || isSearchMode) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore()
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observer.observe(loadMoreRef.current)
-
-    return () => observer.disconnect()
-  }, [loadMore, isSearchMode])
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-purple-900">
@@ -323,7 +261,7 @@ function HomeContent() {
 
       {/* Content */}
       <div className="container mx-auto pb-12">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
               <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -332,18 +270,18 @@ function HomeContent() {
           </div>
         ) : isSearchMode ? (
           /* Search Results */
-          searching ? (
+          isSearching ? (
             <div className="flex justify-center items-center h-64">
               <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
                 <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                 <span className="text-white text-lg font-semibold">Searching...</span>
               </div>
             </div>
-          ) : searchResults.length > 0 ? (
+          ) : (searchData?.movies || []).length > 0 ? (
             <div className="space-y-6">
               <div className="px-4 md:px-8">
                 <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                  Search Results for "{searchTerm}" ({searchResults.length} found)
+                  Search Results for "{searchTerm}" ({(searchData?.movies || []).length} found)
                 </h2>
               </div>
               
@@ -382,7 +320,7 @@ function HomeContent() {
               />
             ))}
 
-            {displayCategories.length === 0 && !loading && (
+            {displayCategories.length === 0 && !isLoading && (
               <div className="text-center py-20">
                 <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
                   <p className="text-gray-400 text-xl mb-2">No movies available</p>
@@ -391,19 +329,22 @@ function HomeContent() {
               </div>
             )}
             
-            {!isSearchMode && hasMore && (
-              <div ref={loadMoreRef} className="flex justify-center py-8">
-                {loadingMore && (
-                  <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
-                    <div className="w-6 h-6 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-white text-sm font-semibold">Loading more movies...</span>
-                  </div>
-                )}
-              </div>
-            )}
+
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setMovieToDelete(null)
+        }}
+        onConfirm={confirmDelete}
+        movie={movieToDelete}
+        isDeleting={isDeleting}
+      />
     </main>
   )
 }

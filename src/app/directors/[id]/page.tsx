@@ -1,30 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
-import type { Director } from '@/types/movie'
+import { useGetDirectorQuery } from '@/store/api/moviesApi'
 
 export default function DirectorProfile({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const [director, setDirector] = useState<Director | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: director, isLoading, isError } = useGetDirectorQuery(parseInt(params.id))
 
-  useEffect(() => {
-    const fetchDirector = async () => {
-      try {
-        const data = await api.getDirector(parseInt(params.id))
-        setDirector(data)
-      } catch (error) {
-        console.error('Error fetching director:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchDirector()
-  }, [params.id])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Loading...</div>
@@ -32,7 +15,7 @@ export default function DirectorProfile({ params }: { params: { id: string } }) 
     )
   }
 
-  if (!director) {
+  if (isError || !director) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Director not found</div>

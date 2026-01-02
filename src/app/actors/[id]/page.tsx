@@ -1,30 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
-import type { Actor } from '@/types/movie'
+import { useGetActorQuery } from '@/store/api/moviesApi'
 
 export default function ActorProfile({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const [actor, setActor] = useState<Actor | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: actor, isLoading, isError } = useGetActorQuery(parseInt(params.id))
 
-  useEffect(() => {
-    const fetchActor = async () => {
-      try {
-        const data = await api.getActor(parseInt(params.id))
-        setActor(data)
-      } catch (error) {
-        console.error('Error fetching actor:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchActor()
-  }, [params.id])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Loading...</div>
@@ -32,7 +15,7 @@ export default function ActorProfile({ params }: { params: { id: string } }) {
     )
   }
 
-  if (!actor) {
+  if (isError || !actor) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-xl">Actor not found</div>

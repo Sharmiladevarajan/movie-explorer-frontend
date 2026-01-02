@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { api } from '@/lib/api'
+import { useCreateMovieMutation, useUpdateMovieMutation } from '@/store/api/moviesApi'
 import type { Movie, MovieInput } from '@/types/movie'
 
 interface MovieFormProps {
@@ -14,6 +14,9 @@ interface CastMember {
 }
 
 export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
+  const [createMovie, { isLoading: isCreating }] = useCreateMovieMutation()
+  const [updateMovie, { isLoading: isUpdating }] = useUpdateMovieMutation()
+  
   const [formData, setFormData] = useState<MovieInput>({
     title: movie?.title || '',
     director_name: movie?.director || '',
@@ -25,25 +28,22 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
     image_url: movie?.image_url || '',
     cast: movie?.cast?.map(c => ({ actor_name: c.name, role: c.role || '' })) || [],
   })
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const loading = isCreating || isUpdating
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
     try {
       if (movie?.id) {
-        await api.updateMovie(movie.id, formData)
+        await updateMovie({ id: movie.id, movie: formData }).unwrap()
       } else {
-        await api.createMovie(formData)
+        await createMovie(formData).unwrap()
       }
       onSuccess()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred')
-    } finally {
-      setLoading(false)
+      setError(err?.data?.detail || 'An error occurred')
     }
   }
 
