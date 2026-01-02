@@ -8,6 +8,7 @@ export interface Movie {
   rating?: number
   description?: string
   language?: string
+  image_url?: string
   created_at: string
   cast?: Actor[]
   reviews?: Review[]
@@ -21,6 +22,7 @@ export interface MovieInput {
   rating?: number
   description?: string
   language?: string
+  image_url?: string
   cast?: { actor_name: string; role: string }[]
 }
 

@@ -22,6 +22,7 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
     rating: movie?.rating || undefined,
     description: movie?.description || '',
     language: movie?.language || 'English',
+    image_url: movie?.image_url || '',
     cast: movie?.cast?.map(c => ({ actor_name: c.name, role: c.role || '' })) || [],
   })
   const [loading, setLoading] = useState(false)
@@ -155,7 +156,33 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
 
       <div>
         <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
-          <span className="text-lg">📝</span> Description
+          <span className="text-lg">�️</span> Image URL
+        </label>
+        <input
+          type="url"
+          value={formData.image_url}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
+          placeholder="https://example.com/movie-poster.jpg"
+        />
+        {formData.image_url && (
+          <div className="mt-3 p-2 glass-effect rounded-lg">
+            <p className="text-xs text-gray-400 mb-2">Preview:</p>
+            <img 
+              src={formData.image_url} 
+              alt="Movie poster preview" 
+              className="w-32 h-48 object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/128x192?text=Invalid+URL';
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">�📝</span> Description
         </label>
         <textarea
           rows={4}

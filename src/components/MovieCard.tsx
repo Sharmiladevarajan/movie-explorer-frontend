@@ -12,27 +12,45 @@ export function MovieCard({ movie, onEdit, onDelete }: MovieCardProps) {
 
   return (
     <div className="group relative glass-effect rounded-2xl overflow-hidden border border-purple-500/20 hover:border-cyan-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/30">
-      {/* Movie Poster Placeholder - clickable */}
+      {/* Movie Poster - clickable */}
       <div 
         className="relative h-56 bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-cyan-900/30 overflow-hidden cursor-pointer"
         onClick={() => router.push(`/movies/${movie.id}`)}
       >
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A24] via-transparent to-transparent"></div>
+       
+        {movie.image_url ? (
+          <>
+            <img 
+              src={movie.image_url} 
+              alt={movie.title}
+              className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
+              onError={(e) => {
+                // Fallback to gradient background if image fails to load
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A24] via-transparent to-transparent"></div>
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A24] via-transparent to-transparent"></div>
+          </>
+        )}
         
         {/* Animated gradient overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-cyan-600/0 group-hover:from-purple-600/20 group-hover:to-cyan-600/20 transition-all duration-500"></div>
         
         {/* Rating Badge */}
         {movie.rating && (
-          <div className="absolute top-3 right-3 glass-effect px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-yellow-400/30 backdrop-blur-xl">
+          <div className="absolute top-3 right-3 glass-effect px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-yellow-400/30 backdrop-blur-xl z-10">
             <span className="text-yellow-400 text-lg">★</span>
             <span className="text-white font-bold text-sm">{movie.rating}</span>
           </div>
         )}
         
         {/* Genre Badge */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 z-10">
           <span className="inline-block bg-gradient-to-r from-purple-600 to-cyan-600 text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg">
             {movie.genre}
           </span>

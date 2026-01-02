@@ -1,11 +1,19 @@
+// This file is deprecated - use the main /page.tsx instead
+// Redirecting to main page
 'use client'
 
-import { useState, useEffect } from 'react'
-import { HorizontalMovieScroll } from '@/components/HorizontalMovieScroll'
-import { MovieForm } from '@/components/MovieForm'
-import { SearchBar } from '@/components/SearchBar'
-import { api } from '@/lib/api'
-import type { Movie } from '@/types/movie'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+export default function NetflixPageRedirect() {
+  const router = useRouter()
+  
+  useEffect(() => {
+    router.push('/')
+  }, [router])
+  
+  return null
+}
 
 interface Category {
   genre_id: number
@@ -35,6 +43,8 @@ export default function NetflixStyleHome() {
     try {
       setLoading(true)
       const data = await api.getMoviesGroupedByGenre(10)
+      console.log('API Response Categories:', data.categories)
+      console.log('First movie sample:', data.categories[0]?.movies[0])
       setCategories(data.categories)
     } catch (error) {
       console.error('Error fetching categories:', error)
