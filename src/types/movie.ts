@@ -31,6 +31,7 @@ export interface Actor {
   name: string
   bio?: string
   birth_year?: number
+  image_url?: string
   role?: string
   movies?: Movie[]
   movie_count?: number
@@ -41,6 +42,7 @@ export interface Director {
   name: string
   bio?: string
   birth_year?: number
+  image_url?: string
   movies?: Movie[]
   movie_count?: number
 }

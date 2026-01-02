@@ -53,17 +53,38 @@ export default function DirectorProfile({ params }: { params: { id: string } }) 
 
         {/* Director Header */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl p-8 mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="text-6xl">🎬</span>
-            <div>
-              <h1 className="text-4xl font-bold text-white">{director.name}</h1>
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-4">
+            {/* Director Photo */}
+            <div className="flex-shrink-0">
+              {director.image_url ? (
+                <img
+                  src={director.image_url}
+                  alt={director.name}
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-blue-500/50 shadow-xl"
+                />
+              ) : (
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center border-4 border-blue-500/50 shadow-xl">
+                  <span className="text-4xl md:text-5xl">🎬</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Director Info */}
+            <div className="flex-grow">
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{director.name}</h1>
               {director.birth_year && (
-                <p className="text-gray-400 text-lg">Born: {director.birth_year}</p>
+                <p className="text-gray-400 text-lg mb-2">📅 Born: {director.birth_year}</p>
+              )}
+              {director.movie_count && (
+                <p className="text-blue-400 text-lg">🎬 {director.movie_count} films directed</p>
               )}
             </div>
           </div>
           {director.bio && (
-            <p className="text-gray-300 leading-relaxed mt-4">{director.bio}</p>
+            <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+              <h3 className="text-white font-semibold mb-2">Biography</h3>
+              <p className="text-gray-300 leading-relaxed">{director.bio}</p>
+            </div>
           )}
         </div>
 

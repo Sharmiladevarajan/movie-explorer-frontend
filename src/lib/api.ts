@@ -11,8 +11,8 @@ const apiClient = axios.create({
 })
 
 export const api = {
-  async getMovies(params?: { limit?: number; offset?: number; genre?: string; director?: string; actor?: string; year?: number }) {
-    const response = await apiClient.get<{ movies: Movie[]; count: number }>('/api/movies', { params })
+  async getMovies(params?: { limit_per_genre?: number; genre?: string; director?: string; actor?: string; year?: number }) {
+    const response = await apiClient.get<{ categories: any[]; total_categories: number }>('/api/movies', { params })
     return response.data
   },
 
@@ -76,12 +76,7 @@ export const api = {
     return response.data
   },
 
-  async getMoviesGroupedByGenre(limitPerGenre = 10, genres?: string) {
-    const params: any = { limit_per_genre: limitPerGenre }
-    if (genres) params.genres = genres
-    const response = await apiClient.get<{ categories: any[]; total_categories: number }>('/api/movies/by-genre/grouped', { params })
-    return response.data
-  },
+
 
   async getMoviesByGenrePaginated(genreName: string, limit = 20, offset = 0) {
     const response = await apiClient.get<{ movies: Movie[]; count: number; total: number; has_more: boolean }>(

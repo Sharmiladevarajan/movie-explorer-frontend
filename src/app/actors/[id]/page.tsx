@@ -53,17 +53,38 @@ export default function ActorProfile({ params }: { params: { id: string } }) {
 
         {/* Actor Header */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl p-8 mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="text-6xl">🎭</span>
-            <div>
-              <h1 className="text-4xl font-bold text-white">{actor.name}</h1>
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-4">
+            {/* Actor Photo */}
+            <div className="flex-shrink-0">
+              {actor.image_url ? (
+                <img
+                  src={actor.image_url}
+                  alt={actor.name}
+                  className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-purple-500/50 shadow-xl"
+                />
+              ) : (
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center border-4 border-purple-500/50 shadow-xl">
+                  <span className="text-4xl md:text-5xl">🎭</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Actor Info */}
+            <div className="flex-grow">
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{actor.name}</h1>
               {actor.birth_year && (
-                <p className="text-gray-400 text-lg">Born: {actor.birth_year}</p>
+                <p className="text-gray-400 text-lg mb-2">📅 Born: {actor.birth_year}</p>
+              )}
+              {actor.movie_count && (
+                <p className="text-purple-400 text-lg">🎬 {actor.movie_count} movies</p>
               )}
             </div>
           </div>
           {actor.bio && (
-            <p className="text-gray-300 leading-relaxed mt-4">{actor.bio}</p>
+            <div className="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600/50">
+              <h3 className="text-white font-semibold mb-2">Biography</h3>
+              <p className="text-gray-300 leading-relaxed">{actor.bio}</p>
+            </div>
           )}
         </div>
 

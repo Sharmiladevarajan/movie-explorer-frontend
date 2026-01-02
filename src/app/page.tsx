@@ -41,7 +41,7 @@ function HomeContent() {
       if (!append) setLoading(true)
       else setLoadingMore(true)
       
-      const data = await api.getMoviesGroupedByGenre(10)
+      const data = await api.getMovies({ limit_per_genre: 10 })
       
       if (append) {
         // Merge new data with existing categories
@@ -159,7 +159,43 @@ function HomeContent() {
 
   // Filter categories to show only those with movies
   const displayCategories = useMemo(() => {
-    return categories.filter(cat => cat.movies && cat.movies.length > 0)
+    const filteredCategories = categories.filter(cat => cat.movies && cat.movies.length > 0)
+    
+    // Combine categories with less than 6 movies
+    const combinedCategories = []
+    let i = 0
+    
+    while (i < filteredCategories.length) {
+      const currentCategory = filteredCategories[i]
+      
+      // If current category has 6 or more movies, keep it as is
+      if (currentCategory.movies.length >= 6) {
+        combinedCategories.push(currentCategory)
+        i++
+      } else {
+        // Current category has less than 6 movies, try to combine with next
+        const nextCategory = filteredCategories[i + 1]
+        
+        if (nextCategory && nextCategory.movies.length < 6) {
+          // Combine current and next categories
+          const combinedCategory = {
+            genre_id: `${currentCategory.genre_id}-${nextCategory.genre_id}`, // Combined ID
+            genre_name: `${currentCategory.genre_name} & ${nextCategory.genre_name}`,
+            genre_description: currentCategory.genre_description || nextCategory.genre_description,
+            movie_count: currentCategory.movie_count + nextCategory.movie_count,
+            movies: [...currentCategory.movies, ...nextCategory.movies]
+          }
+          combinedCategories.push(combinedCategory)
+          i += 2 // Skip both categories since we combined them
+        } else {
+          // No next category to combine with, or next category has 6+ movies
+          combinedCategories.push(currentCategory)
+          i++
+        }
+      }
+    }
+    
+    return combinedCategories
   }, [categories])
 
   // Determine if we're showing search results
