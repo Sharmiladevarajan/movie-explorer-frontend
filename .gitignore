@@ -1,3 +1,18 @@
+# Ignore npm/yarn/pnpm links and symlinks
+node_modules/
+.next/
+*.tgz
+*.log
+*.symlink
+*.link
+link/
+links/
+npm-link/
+yarn-link/
+pnpm-link/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 # Dependencies
 node_modules/
 /.pnp
