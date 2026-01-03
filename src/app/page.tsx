@@ -260,6 +260,7 @@ function HomeContent() {
         <p className="text-gray-400 text-xl mb-2">
   No movies found for "{searchTerm}"
 </p>
+
                 <p className="text-gray-500 text-sm">Try searching with different keywords</p>
               </div>
             </div>
