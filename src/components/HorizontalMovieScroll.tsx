@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import type { Movie } from '@/types/movie'
 
 interface HorizontalMovieScrollProps {
@@ -129,9 +130,11 @@ HorizontalMovieScroll({
                 {/* Poster Background */}
                 {movie.image_url ? (
                   <>
-                    <img 
+                    <Image 
                       src={movie.image_url} 
                       alt={movie.title}
+                      fill
+                      sizes="240px"
                       className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:scale-110 transition-all duration-500"
                       onLoad={(e) => {
                         // Fade in smoothly once loaded

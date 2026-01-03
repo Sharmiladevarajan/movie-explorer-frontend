@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useGetActorQuery } from '@/store/api/moviesApi'
 
 export default function ActorProfile({ params }: { params: { id: string } }) {
@@ -40,9 +41,11 @@ export default function ActorProfile({ params }: { params: { id: string } }) {
             {/* Actor Photo */}
             <div className="flex-shrink-0">
               {actor.image_url ? (
-                <img
+                <Image
                   src={actor.image_url}
                   alt={actor.name}
+                  width={160}
+                  height={160}
                   className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-purple-500/50 shadow-xl"
                 />
               ) : (

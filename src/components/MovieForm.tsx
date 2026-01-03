@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react'
+import Image from 'next/image'
 import { useCreateMovieMutation, useUpdateMovieMutation } from '@/store/api/moviesApi'
 import type { Movie, MovieInput } from '@/types/movie'
 
@@ -168,9 +169,11 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
         {formData.image_url && (
           <div className="mt-3 p-2 glass-effect rounded-lg">
             <p className="text-xs text-gray-400 mb-2">Preview:</p>
-            <img 
+            <Image 
               src={formData.image_url} 
               alt="Movie poster preview" 
+              width={128}
+              height={192}
               className="w-32 h-48 object-cover rounded-lg"
               onError={(e) => {
                 e.currentTarget.src = 'https://via.placeholder.com/128x192?text=Invalid+URL';

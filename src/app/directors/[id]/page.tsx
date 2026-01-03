@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useGetDirectorQuery } from '@/store/api/moviesApi'
 
 export default function DirectorProfile({ params }: { params: { id: string } }) {
@@ -40,9 +41,11 @@ export default function DirectorProfile({ params }: { params: { id: string } }) 
             {/* Director Photo */}
             <div className="flex-shrink-0">
               {director.image_url ? (
-                <img
+                <Image
                   src={director.image_url}
                   alt={director.name}
+                  width={160}
+                  height={160}
                   className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-blue-500/50 shadow-xl"
                 />
               ) : (
