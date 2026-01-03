@@ -1,155 +1,213 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MovieCard } from '@/components/MovieCard'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { HorizontalMovieScroll } from '@/components/HorizontalMovieScroll'
 import { MovieForm } from '@/components/MovieForm'
+import { HeroSection } from '@/components/HeroSection'
+import { SearchSection } from '@/components/SearchSection'
+import { CategoriesSection } from '@/components/CategoriesSection'
 import { SearchBar } from '@/components/SearchBar'
-import { api } from '@/lib/api'
+import { MovieProvider, useMovie } from '@/contexts/MovieContext'
+import { useGetMoviesQuery, useLazySearchMoviesQuery, useDeleteMovieMutation } from '@/store/api/moviesApi'
 import type { Movie } from '@/types/movie'
 
-const movieQuotes = [
+interface Category {
+  genre_id: number | string
+  genre_name: string
+  genre_description: string | null
+  movie_count: number
+  movies: Movie[]
+}
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
+
+const heroQuotes = [
   { quote: "Here's looking at you, kid.", movie: "Casablanca" },
   { quote: "May the Force be with you.", movie: "Star Wars" },
   { quote: "I'm going to make him an offer he can't refuse.", movie: "The Godfather" },
-  { quote: "Life is like a box of chocolates.", movie: "Forrest Gump" },
   { quote: "Why so serious?", movie: "The Dark Knight" },
-  { quote: "I'll be back.", movie: "The Terminator" },
-  { quote: "Just keep swimming.", movie: "Finding Nemo" },
-  { quote: "To infinity and beyond!", movie: "Toy Story" },
 ]
 
-export default function Home() {
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editingMovie, setEditingMovie] = useState<Movie | null>(null)
+function HomeContent() {
+  const { isAdmin, setIsAdmin, editingMovie, setEditingMovie, showForm, setShowForm, handleEdit } = useMovie()
   const [searchTerm, setSearchTerm] = useState('')
   const [currentQuote, setCurrentQuote] = useState(0)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [movieToDelete, setMovieToDelete] = useState<Movie | null>(null)
 
-  const fetchMovies = async () => {
-    try {
-      setLoading(true)
-      const data = await api.getMovies()
-      setMovies(data.movies)
-    } catch (error) {
-      console.error('Error fetching movies:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // RTK Query hooks
+  const { data: moviesData, isLoading, isError, refetch } = useGetMoviesQuery({ limit_per_genre: 10 })
+  const [searchMovies, { data: searchData, isLoading: isSearching }] = useLazySearchMoviesQuery()
+  const [deleteMovie, { isLoading: isDeleting }] = useDeleteMovieMutation()
 
-  const handleSearch = async (term: string) => {
+  const categories = moviesData?.categories || []
+
+  const fetchCategories = useCallback(() => {
+    refetch()
+  }, [refetch])
+
+  const handleSearch = useCallback(async (term: string) => {
     setSearchTerm(term)
+    
     if (!term.trim()) {
-      fetchMovies()
       return
     }
     
     try {
-      setLoading(true)
-      const data = await api.searchMovies(term)
-      setMovies(data.movies)
+      await searchMovies(term).unwrap()
     } catch (error) {
       console.error('Error searching movies:', error)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [searchMovies])
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this movie?')) return
+  // Group search results by genre
+  const searchResultsByGenre = useMemo(() => {
+    const searchResults: Movie[] = searchData?.movies || []
+    if (!searchResults.length) return []
+    
+    const grouped = searchResults.reduce((acc: { [key: string]: Movie[] }, movie: Movie) => {
+      const genre = (movie as any).genre || 'Unknown'
+      if (!acc[genre]) acc[genre] = []
+      acc[genre].push(movie)
+      return acc
+    }, {} as { [key: string]: Movie[] })
+    
+    return Object.entries(grouped).map(([genre_name, movies]) => ({
+      genre_name,
+      movies: movies as Movie[],
+    }))
+  }, [searchData])
+
+  const handleDelete = useCallback((movie: Movie) => {
+    setMovieToDelete(movie)
+    setDeleteModalOpen(true)
+  }, [])
+
+  const confirmDelete = useCallback(async () => {
+    if (!movieToDelete) return
     
     try {
-      await api.deleteMovie(id)
-      fetchMovies()
+      await deleteMovie(movieToDelete.id).unwrap()
+      setDeleteModalOpen(false)
+      setMovieToDelete(null)
+      
+      // Refresh search results if we're in search mode
+      if (searchTerm) {
+        await searchMovies(searchTerm)
+      }
     } catch (error) {
       console.error('Error deleting movie:', error)
     }
-  }
+  }, [movieToDelete, deleteMovie, searchTerm, searchMovies])
 
-  const handleEdit = (movie: Movie) => {
-    setEditingMovie(movie)
+  const handleFormSuccess = useCallback(() => {
+    setShowForm(false)
+    setEditingMovie(null)
+    
+    // Refresh data
+    refetch()
+    if (searchTerm) {
+      searchMovies(searchTerm)
+    }
+  }, [setShowForm, setEditingMovie, refetch, searchTerm, searchMovies])
+
+  const handleFormCancel = useCallback(() => {
+    setShowForm(false)
+    setEditingMovie(null)
+  }, [setShowForm, setEditingMovie])
+
+  const handleAddMovie = useCallback(() => {
+    setEditingMovie(null)
     setShowForm(true)
-  }
+  }, [setEditingMovie, setShowForm])
 
-  const handleFormSuccess = () => {
-    setShowForm(false)
-    setEditingMovie(null)
-    fetchMovies()
-  }
+  // Filter categories to show only those with movies (no merging)
+  const displayCategories = useMemo(() => {
+    return categories.filter((cat: Category) => cat.movies && cat.movies.length > 0)
+  }, [categories])
 
-  const handleFormCancel = () => {
-    setShowForm(false)
-    setEditingMovie(null)
-  }
+  // Determine if we're showing search results
+  const isSearchMode = searchTerm.trim().length > 0
 
   useEffect(() => {
-    fetchMovies()
-    // Rotate quotes every 5 seconds
     const quoteInterval = setInterval(() => {
-      setCurrentQuote((prev) => (prev + 1) % movieQuotes.length)
+      setCurrentQuote((prev) => (prev + 1) % heroQuotes.length)
     }, 5000)
     return () => clearInterval(quoteInterval)
   }, [])
 
   return (
-    <main className="min-h-screen">
-      {/* Hero Section */}
-      <div className="relative h-[550px] mb-12 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-blue-900/20 to-cyan-900/30">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1920')] bg-cover bg-center opacity-10 animate-fadeIn"></div>
-          {/* Animated orbs */}
-          <div className="absolute top-20 left-10 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-20 right-10 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl animate-float" style={{animationDelay: '1s'}}></div>
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0F] via-transparent to-[#0A0A0F]/30"></div>
-        
-        <div className="relative h-full max-w-7xl mx-auto px-4 flex flex-col justify-center">
-          <div className="animate-slideIn">
-            <div className="mb-3">
-              <span className="text-cyan-400 text-sm font-semibold uppercase tracking-[0.3em] animate-glow">★ Premium Experience</span>
+    <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-purple-900">
+      {/* Profile Switcher */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="glass-effect rounded-full p-2 border border-purple-500/30 hover:border-purple-500/50 transition-all">
+          <button
+            onClick={() => setIsAdmin(!isAdmin)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full hover:bg-white/10 transition-all"
+            title={isAdmin ? "Switch to User Mode" : "Switch to Admin Mode"}
+          >
+            <div className="relative">
+              {isAdmin ? (
+                <span className="text-2xl">👨‍💼</span>
+              ) : (
+                <span className="text-2xl">👤</span>
+              )}
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
             </div>
-            <h1 className="text-6xl md:text-8xl font-black mb-6 text-shadow-lg leading-tight">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400">
-                Movies
-              </span>
-              <br />
-              <span className="text-white">Explorer</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-8 text-shadow max-w-2xl leading-relaxed">
-              Your personal cinema sanctuary • Curate & explore
-            </p>
-            
-            {/* Quote Display with glass effect */}
-            <div className="mb-8 animate-fadeIn glass-effect p-6 rounded-2xl max-w-2xl border-l-4 border-purple-500">
-              <blockquote className="text-lg md:text-xl italic text-gray-100 text-shadow">
-                &quot;{movieQuotes[currentQuote].quote}&quot;
-              </blockquote>
-              <p className="text-sm text-cyan-400 mt-3 font-medium">— {movieQuotes[currentQuote].movie}</p>
-            </div>
-            
-            <button
-              onClick={() => setShowForm(true)}
-              className="group relative bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-purple-500/50 overflow-hidden"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                <span className="text-2xl">+</span> Add New Movie
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
-          </div>
+            <span className="text-white font-semibold text-sm">
+              {isAdmin ? 'Admin' : 'User'}
+            </span>
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 pb-16">
-        <SearchBar onSearch={handleSearch} />
+      {/* Hero Section */}
+      <div className="relative h-[60vh] mb-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-blue-900/30 to-cyan-900/40">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1920')] bg-cover bg-center opacity-15"></div>
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent"></div>
+        <div className="relative h-full container mx-auto px-4 md:px-8 flex flex-col justify-center">
+          <HeroSection currentQuote={currentQuote} heroQuotes={heroQuotes} />
+          {isAdmin && (
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={handleAddMovie}
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+              >
+                🎬 Add New Movie
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {showForm && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
-            <div className="glass-effect rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border-2 border-purple-500/30">
-              <h2 className="text-2xl font-bold mb-4 text-white">
-                {editingMovie ? 'Edit Movie' : 'Add New Movie'}
-              </h2>
+      {/* Search Section */}
+      <div className="container mx-auto px-4 md:px-8 mb-4">
+        <SearchSection
+          searchTerm={searchTerm}
+          onSearch={handleSearch}
+          isSearching={isSearching}
+          searchResultsByGenre={searchResultsByGenre}
+        />
+      </div>
+
+     
+
+      {/* Movie Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl max-h-[90vh] glass-effect rounded-2xl border border-purple-500/30 overflow-hidden">
+            {/* Close Button */}
+            <button
+              onClick={handleFormCancel}
+              className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full glass-effect hover:bg-red-500/20 border border-purple-500/30 hover:border-red-500/50 transition-all"
+              title="Close"
+            >
+              <span className="text-white text-2xl leading-none">×</span>
+            </button>
+            
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto max-h-[90vh] p-6">
               <MovieForm
                 movie={editingMovie}
                 onSuccess={handleFormSuccess}
@@ -157,47 +215,103 @@ export default function Home() {
               />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {loading ? (
+      {/* Content */}
+      <div className="container mx-auto pb-12">
+        {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 border-opacity-75"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-cyan-500 border-opacity-50 absolute top-0 left-0" style={{animationDirection: 'reverse', animationDuration: '1s'}}></div>
+            <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
+              <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-white text-lg font-semibold">Loading movies...</span>
             </div>
           </div>
-        ) : movies.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4 animate-float">🎬</div>
-            <p className="text-gray-400 text-xl">
-              {searchTerm ? 'No movies found matching your search.' : 'No movies yet. Add your first movie!'}
-            </p>
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-              <span className="text-purple-500 text-3xl">●</span>
-              {searchTerm ? `Search Results for "${searchTerm}"` : 'Your Collection'}
-              <span className="text-sm text-cyan-400 font-normal px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">({movies.length} {movies.length === 1 ? 'movie' : 'movies'})</span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {movies.map((movie, index) => (
-                <div
-                  key={movie.id}
-                  className="animate-fadeIn"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <MovieCard
-                    movie={movie}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                </div>
+        ) : isSearchMode ? (
+          /* Search Results */
+          isSearching ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="flex items-center gap-3 glass-effect px-8 py-4 rounded-full border border-purple-500/20">
+                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-white text-lg font-semibold">Searching...</span>
+              </div>
+            </div>
+          ) : (searchData?.movies || []).length > 0 ? (
+            <div className="space-y-6">
+              <div className="px-4 md:px-8">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+                  Search Results for "{searchTerm}" ({(searchData?.movies || []).length} found)
+                </h2>
+              </div>
+              
+              {/* Display search results grouped by genre */}
+              {searchResultsByGenre.map((group, index) => (
+                <HorizontalMovieScroll
+                  key={`search-${group.genre_name}-${index}`}
+                  title={group.genre_name}
+                  movies={group.movies}
+                  isAdmin={isAdmin}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               ))}
             </div>
+          ) : (
+            <div className="text-center py-20">
+              <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
+                <p className="text-gray-400 text-xl mb-2">No movies found for "{searchTerm}"</p>
+                <p className="text-gray-500 text-sm">Try searching with different keywords</p>
+              </div>
+            </div>
+          )
+        ) : (
+          /* Netflix-style Categories */
+          <div className="space-y-6" key={`categories-${displayCategories.length}`}>
+            {displayCategories.map((category) => (
+              <HorizontalMovieScroll
+                key={category.genre_id}
+                title={category.genre_name}
+                description={category.genre_description || undefined}
+                movies={category.movies}
+                isAdmin={isAdmin}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+
+            {displayCategories.length === 0 && !isLoading && (
+              <div className="text-center py-20">
+                <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
+                  <p className="text-gray-400 text-xl mb-2">No movies available</p>
+                  <p className="text-gray-500 text-sm">Add some movies to get started!</p>
+                </div>
+              </div>
+            )}
+            
+
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setMovieToDelete(null)
+        }}
+        onConfirm={confirmDelete}
+        movie={movieToDelete}
+        isDeleting={isDeleting}
+      />
     </main>
+  )
+}
+
+export default function NetflixStyleHome() {
+  return (
+    <MovieProvider>
+      <HomeContent />
+    </MovieProvider>
   )
 }

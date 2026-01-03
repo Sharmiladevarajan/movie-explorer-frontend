@@ -1,7 +1,7 @@
 import axios from 'axios'
-import type { Movie, MovieInput, Review, ReviewInput } from '@/types/movie'
+import type { Movie, MovieInput, Review, ReviewInput, Actor, Director, Genre } from '@/types/movie'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://movie-explorer-backend-mqtt.onrender.com'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -11,10 +11,8 @@ const apiClient = axios.create({
 })
 
 export const api = {
-  async getMovies(limit = 100, offset = 0, genre?: string) {
-    const params: any = { limit, offset }
-    if (genre) params.genre = genre
-    const response = await apiClient.get<{ movies: Movie[]; count: number }>('/api/movies', { params })
+  async getMovies(params?: { limit_per_genre?: number; genre?: string; director?: string; actor?: string; year?: number }) {
+    const response = await apiClient.get<{ categories: any[]; total_categories: number }>('/api/movies', { params })
     return response.data
   },
 
@@ -54,12 +52,37 @@ export const api = {
   },
 
   async getDirectors() {
-    const response = await apiClient.get('/api/directors')
+    const response = await apiClient.get<{ directors: Director[]; count: number }>('/api/directors')
+    return response.data
+  },
+
+  async getDirector(id: number) {
+    const response = await apiClient.get<Director>(`/api/directors/${id}`)
     return response.data
   },
 
   async getGenres() {
-    const response = await apiClient.get('/api/genres')
+    const response = await apiClient.get<{ genres: Genre[]; count: number }>('/api/genres')
+    return response.data
+  },
+
+  async getActors(params?: { limit?: number; offset?: number; genre?: string }) {
+    const response = await apiClient.get<{ actors: Actor[]; count: number }>('/api/actors', { params })
+    return response.data
+  },
+
+  async getActor(id: number) {
+    const response = await apiClient.get<Actor>(`/api/actors/${id}`)
+    return response.data
+  },
+
+
+
+  async getMoviesByGenrePaginated(genreName: string, limit = 20, offset = 0) {
+    const response = await apiClient.get<{ movies: Movie[]; count: number; total: number; has_more: boolean }>(
+      `/api/movies/genre/${genreName}`,
+      { params: { limit, offset } }
+    )
     return response.data
   },
 }

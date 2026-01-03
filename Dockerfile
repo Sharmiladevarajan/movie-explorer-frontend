@@ -12,8 +12,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Run linting and build
+RUN npm run lint && npm run build
 
 # Production stage
 FROM node:18-alpine AS runner

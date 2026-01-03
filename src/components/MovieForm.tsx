@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { api } from '@/lib/api'
+import { useCreateMovieMutation, useUpdateMovieMutation } from '@/store/api/moviesApi'
 import type { Movie, MovieInput } from '@/types/movie'
 
 interface MovieFormProps {
@@ -8,7 +8,15 @@ interface MovieFormProps {
   onCancel: () => void
 }
 
+interface CastMember {
+  actor_name: string
+  role: string
+}
+
 export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
+  const [createMovie, { isLoading: isCreating }] = useCreateMovieMutation()
+  const [updateMovie, { isLoading: isUpdating }] = useUpdateMovieMutation()
+  
   const [formData, setFormData] = useState<MovieInput>({
     title: movie?.title || '',
     director_name: movie?.director || '',
@@ -16,26 +24,26 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
     genre_name: movie?.genre || '',
     rating: movie?.rating || undefined,
     description: movie?.description || '',
+    language: movie?.language || 'English',
+    image_url: movie?.image_url || '',
+    cast: movie?.cast?.map(c => ({ actor_name: c.name, role: c.role || '' })) || [],
   })
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const loading = isCreating || isUpdating
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
     try {
       if (movie?.id) {
-        await api.updateMovie(movie.id, formData)
+        await updateMovie({ id: movie.id, movie: formData }).unwrap()
       } else {
-        await api.createMovie(formData)
+        await createMovie(formData).unwrap()
       }
       onSuccess()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred')
-    } finally {
-      setLoading(false)
+      setError(err?.data?.detail || 'An error occurred')
     }
   }
 
@@ -124,7 +132,57 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
 
       <div>
         <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
-          <span className="text-lg">📝</span> Description
+          <span className="text-lg">🌐</span> Language
+        </label>
+        <select
+          value={formData.language}
+          onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
+        >
+          <option value="English">English</option>
+          <option value="Spanish">Spanish</option>
+          <option value="French">French</option>
+          <option value="German">German</option>
+          <option value="Italian">Italian</option>
+          <option value="Japanese">Japanese</option>
+          <option value="Korean">Korean</option>
+          <option value="Chinese">Chinese</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Arabic">Arabic</option>
+          <option value="Russian">Russian</option>
+          <option value="Portuguese">Portuguese</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">�️</span> Image URL
+        </label>
+        <input
+          type="url"
+          value={formData.image_url}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+          className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
+          placeholder="https://example.com/movie-poster.jpg"
+        />
+        {formData.image_url && (
+          <div className="mt-3 p-2 glass-effect rounded-lg">
+            <p className="text-xs text-gray-400 mb-2">Preview:</p>
+            <img 
+              src={formData.image_url} 
+              alt="Movie poster preview" 
+              className="w-32 h-48 object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/128x192?text=Invalid+URL';
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">�📝</span> Description
         </label>
         <textarea
           rows={4}
@@ -132,6 +190,62 @@ export function MovieForm({ movie, onSuccess, onCancel }: MovieFormProps) {
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="w-full px-4 py-3 glass-effect rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all resize-none"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
+          <span className="text-lg">🎭</span> Cast Members
+        </label>
+        <div className="space-y-3">
+          {(formData.cast || []).map((member, index) => (
+            <div key={index} className="flex gap-2 items-start">
+              <input
+                type="text"
+                placeholder="Actor name"
+                value={member.actor_name}
+                onChange={(e) => {
+                  const newCast = [...(formData.cast || [])]
+                  newCast[index] = { ...newCast[index], actor_name: e.target.value }
+                  setFormData({ ...formData, cast: newCast })
+                }}
+                className="flex-1 px-4 py-2 glass-effect rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
+              />
+              <input
+                type="text"
+                placeholder="Role/Character"
+                value={member.role}
+                onChange={(e) => {
+                  const newCast = [...(formData.cast || [])]
+                  newCast[index] = { ...newCast[index], role: e.target.value }
+                  setFormData({ ...formData, cast: newCast })
+                }}
+                className="flex-1 px-4 py-2 glass-effect rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const newCast = (formData.cast || []).filter((_, i) => i !== index)
+                  setFormData({ ...formData, cast: newCast })
+                }}
+                className="px-3 py-2 glass-effect hover:bg-red-500/20 text-red-400 rounded-lg transition-all border border-red-500/30 hover:border-red-500/50"
+              >
+                🗑️
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setFormData({ 
+                ...formData, 
+                cast: [...(formData.cast || []), { actor_name: '', role: '' }]
+              })
+            }}
+            className="w-full px-4 py-2 glass-effect hover:bg-purple-500/20 text-purple-300 rounded-lg transition-all border border-purple-500/30 hover:border-purple-500/50 font-semibold"
+          >
+            ➕ Add Cast Member
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-3 pt-4">
