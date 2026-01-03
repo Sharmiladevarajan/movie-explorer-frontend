@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { Movie, MovieInput, Review, ReviewInput, Actor, Director, Genre } from '@/types/movie'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://movie-explorer-backend-mqtt.onrender.com'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

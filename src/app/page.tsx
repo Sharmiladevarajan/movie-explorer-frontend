@@ -120,36 +120,9 @@ function HomeContent() {
     setShowForm(true)
   }, [setEditingMovie, setShowForm])
 
-  // Filter categories to show only those with movies
+  // Filter categories to show only those with movies (no merging)
   const displayCategories = useMemo(() => {
-    const filteredCategories = categories.filter((cat: Category) => cat.movies && cat.movies.length > 0)
-    // Combine categories with less than 6 movies
-    const combinedCategories: Category[] = []
-    let i = 0
-    while (i < filteredCategories.length) {
-      const currentCategory = filteredCategories[i]
-      if (currentCategory.movies.length >= 6) {
-        combinedCategories.push(currentCategory)
-        i++
-      } else {
-        const nextCategory = filteredCategories[i + 1]
-        if (nextCategory && nextCategory.movies.length < 6) {
-          const combinedCategory: Category = {
-            genre_id: `${currentCategory.genre_id}-${nextCategory.genre_id}`,
-            genre_name: `${currentCategory.genre_name} & ${nextCategory.genre_name}`,
-            genre_description: currentCategory.genre_description || nextCategory.genre_description,
-            movie_count: currentCategory.movie_count + nextCategory.movie_count,
-            movies: [...currentCategory.movies, ...nextCategory.movies]
-          }
-          combinedCategories.push(combinedCategory)
-          i += 2
-        } else {
-          combinedCategories.push(currentCategory)
-          i++
-        }
-      }
-    }
-    return combinedCategories
+    return categories.filter((cat: Category) => cat.movies && cat.movies.length > 0)
   }, [categories])
 
   // Determine if we're showing search results
@@ -218,17 +191,7 @@ function HomeContent() {
         />
       </div>
 
-      {/* Categories Section */}
-      {!isSearchMode && (
-        <div className="container mx-auto px-4 md:px-8">
-          <CategoriesSection
-            categories={displayCategories}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            isAdmin={isAdmin}
-          />
-        </div>
-      )}
+     
 
       {/* Movie Form Modal */}
       {showForm && (

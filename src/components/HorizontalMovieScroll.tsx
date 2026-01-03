@@ -13,7 +13,8 @@ interface HorizontalMovieScrollProps {
   onDelete?: (movie: Movie) => void
 }
 
-export function HorizontalMovieScroll({ 
+export function 
+HorizontalMovieScroll({ 
   title, 
   movies, 
   description, 

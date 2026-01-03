@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { Movie, MovieInput, Actor, Director, Genre, Review, ReviewInput } from '@/types/movie'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://movie-explorer-backend-mqtt.onrender.com'
 
 export const moviesApi = createApi({
   reducerPath: 'moviesApi',
