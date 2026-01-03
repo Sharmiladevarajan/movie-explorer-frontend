@@ -38,8 +38,6 @@ function HomeContent() {
   const [searchMovies, { data: searchData, isLoading: isSearching }] = useLazySearchMoviesQuery()
   const [deleteMovie, { isLoading: isDeleting }] = useDeleteMovieMutation()
 
-  const categories = moviesData?.categories || []
-
   const fetchCategories = useCallback(() => {
     refetch()
   }, [refetch])
@@ -121,8 +119,9 @@ function HomeContent() {
 
   // Filter categories to show only those with movies (no merging)
   const displayCategories = useMemo(() => {
+    const categories = moviesData?.categories || []
     return categories.filter((cat: Category) => cat.movies && cat.movies.length > 0)
-  }, [categories])
+  }, [moviesData])
 
   // Determine if we're showing search results
   const isSearchMode = searchTerm.trim().length > 0
@@ -239,7 +238,7 @@ function HomeContent() {
             <div className="space-y-6">
               <div className="px-4 md:px-8">
                 <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-                  Search Results for "{searchTerm}" ({(searchData?.movies || []).length} found)
+                  Search Results for &quot;{searchTerm}&quot; ({(searchData?.movies || []).length} found)
                 </h2>
               </div>
               
@@ -258,7 +257,7 @@ function HomeContent() {
           ) : (
             <div className="text-center py-20">
               <div className="glass-effect inline-block px-8 py-6 rounded-2xl border border-purple-500/20">
-                <p className="text-gray-400 text-xl mb-2">No movies found for "{searchTerm}"</p>
+                <p className="text-gray-400 text-xl mb-2">No movies found for &quot;{searchTerm}&quot;</p>
                 <p className="text-gray-500 text-sm">Try searching with different keywords</p>
               </div>
             </div>
