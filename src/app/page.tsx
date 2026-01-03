@@ -3,19 +3,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { HorizontalMovieScroll } from '@/components/HorizontalMovieScroll'
 import { MovieForm } from '@/components/MovieForm'
+import { HeroSection } from '@/components/HeroSection'
+import { SearchSection } from '@/components/SearchSection'
+import { CategoriesSection } from '@/components/CategoriesSection'
 import { SearchBar } from '@/components/SearchBar'
-import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 import { MovieProvider, useMovie } from '@/contexts/MovieContext'
 import { useGetMoviesQuery, useLazySearchMoviesQuery, useDeleteMovieMutation } from '@/store/api/moviesApi'
 import type { Movie } from '@/types/movie'
 
 interface Category {
-  genre_id: number
+  genre_id: number | string
   genre_name: string
   genre_description: string | null
   movie_count: number
   movies: Movie[]
 }
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 
 const heroQuotes = [
   { quote: "Here's looking at you, kid.", movie: "Casablanca" },
@@ -58,19 +61,19 @@ function HomeContent() {
 
   // Group search results by genre
   const searchResultsByGenre = useMemo(() => {
-    const searchResults = searchData?.movies || []
+    const searchResults: Movie[] = searchData?.movies || []
     if (!searchResults.length) return []
     
-    const grouped = searchResults.reduce((acc: { [key: string]: Movie[] }, movie) => {
-      const genre = movie.genre || 'Unknown'
+    const grouped = searchResults.reduce((acc: { [key: string]: Movie[] }, movie: Movie) => {
+      const genre = (movie as any).genre || 'Unknown'
       if (!acc[genre]) acc[genre] = []
       acc[genre].push(movie)
       return acc
-    }, {})
+    }, {} as { [key: string]: Movie[] })
     
     return Object.entries(grouped).map(([genre_name, movies]) => ({
       genre_name,
-      movies,
+      movies: movies as Movie[],
     }))
   }, [searchData])
 
@@ -119,42 +122,33 @@ function HomeContent() {
 
   // Filter categories to show only those with movies
   const displayCategories = useMemo(() => {
-    const filteredCategories = categories.filter(cat => cat.movies && cat.movies.length > 0)
-    
+    const filteredCategories = categories.filter((cat: Category) => cat.movies && cat.movies.length > 0)
     // Combine categories with less than 6 movies
-    const combinedCategories = []
+    const combinedCategories: Category[] = []
     let i = 0
-    
     while (i < filteredCategories.length) {
       const currentCategory = filteredCategories[i]
-      
-      // If current category has 6 or more movies, keep it as is
       if (currentCategory.movies.length >= 6) {
         combinedCategories.push(currentCategory)
         i++
       } else {
-        // Current category has less than 6 movies, try to combine with next
         const nextCategory = filteredCategories[i + 1]
-        
         if (nextCategory && nextCategory.movies.length < 6) {
-          // Combine current and next categories
-          const combinedCategory = {
-            genre_id: `${currentCategory.genre_id}-${nextCategory.genre_id}`, // Combined ID
+          const combinedCategory: Category = {
+            genre_id: `${currentCategory.genre_id}-${nextCategory.genre_id}`,
             genre_name: `${currentCategory.genre_name} & ${nextCategory.genre_name}`,
             genre_description: currentCategory.genre_description || nextCategory.genre_description,
             movie_count: currentCategory.movie_count + nextCategory.movie_count,
             movies: [...currentCategory.movies, ...nextCategory.movies]
           }
           combinedCategories.push(combinedCategory)
-          i += 2 // Skip both categories since we combined them
+          i += 2
         } else {
-          // No next category to combine with, or next category has 6+ movies
           combinedCategories.push(currentCategory)
           i++
         }
       }
     }
-    
     return combinedCategories
   }, [categories])
 
@@ -198,41 +192,43 @@ function HomeContent() {
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-blue-900/30 to-cyan-900/40">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1920')] bg-cover bg-center opacity-15"></div>
         </div>
-        
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent"></div>
-        
         <div className="relative h-full container mx-auto px-4 md:px-8 flex flex-col justify-center">
-          <div className="max-w-3xl space-y-6 animate-fadeIn">
-            <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
-              Discover Your Next
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400">
-                Favorite Movie
-              </span>
-            </h1>
-            
-            <div className="glass-effect p-4 rounded-lg border border-purple-500/20 max-w-lg">
-              <p className="text-gray-300 text-lg italic">"{heroQuotes[currentQuote].quote}"</p>
-              <p className="text-purple-400 text-sm mt-1">— {heroQuotes[currentQuote].movie}</p>
+          <HeroSection currentQuote={currentQuote} heroQuotes={heroQuotes} />
+          {isAdmin && (
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={handleAddMovie}
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+              >
+                🎬 Add New Movie
+              </button>
             </div>
-
-            {isAdmin && (
-              <div className="flex gap-4 pt-4">
-                <button
-                  onClick={handleAddMovie}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold rounded-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
-                >
-                  🎬 Add New Movie
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Section */}
       <div className="container mx-auto px-4 md:px-8 mb-4">
-        <SearchBar onSearch={handleSearch} />
+        <SearchSection
+          searchTerm={searchTerm}
+          onSearch={handleSearch}
+          isSearching={isSearching}
+          searchResultsByGenre={searchResultsByGenre}
+        />
       </div>
+
+      {/* Categories Section */}
+      {!isSearchMode && (
+        <div className="container mx-auto px-4 md:px-8">
+          <CategoriesSection
+            categories={displayCategories}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            isAdmin={isAdmin}
+          />
+        </div>
+      )}
 
       {/* Movie Form Modal */}
       {showForm && (
