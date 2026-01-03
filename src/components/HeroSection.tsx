@@ -10,7 +10,7 @@ export function HeroSection({ currentQuote, heroQuotes }: { currentQuote: number
         </span>
       </h1>
       <div className="glass-effect p-4 rounded-lg border border-purple-500/20 max-w-lg">
-        <p className="text-gray-300 text-lg italic">&quot;{heroQuotes[currentQuote].quote}&quot;</p>
+        <p className="text-gray-300 text-lg italic">{heroQuotes[currentQuote].quote}</p>
         <p className="text-purple-400 text-sm mt-1">— {heroQuotes[currentQuote].movie}</p>
       </div>
     </div>
