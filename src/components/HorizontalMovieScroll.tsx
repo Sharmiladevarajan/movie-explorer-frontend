@@ -128,13 +128,14 @@ HorizontalMovieScroll({
               {/* Movie Card */}
               <div className="relative h-80 rounded-lg overflow-hidden bg-slate-900/90 border border-purple-500/20 hover:border-cyan-500/50 transition-all duration-300 transform hover:scale-105 hover:z-10">
                 {/* Poster Background */}
-                {movie.image_url ? (
+                {movie.image_url && movie.image_url !== 'N/A' ? (
                   <>
                     <Image 
                       src={movie.image_url} 
                       alt={movie.title}
                       fill
                       sizes="240px"
+                      unoptimized={movie.image_url.includes('media-amazon.com')}
                       className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:scale-110 transition-all duration-500"
                       onLoad={(e) => {
                         // Fade in smoothly once loaded

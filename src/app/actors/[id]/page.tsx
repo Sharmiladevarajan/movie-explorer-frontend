@@ -40,12 +40,13 @@ export default function ActorProfile({ params }: { params: { id: string } }) {
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-4">
             {/* Actor Photo */}
             <div className="flex-shrink-0">
-              {actor.image_url ? (
+              {actor.image_url && actor.image_url !== 'N/A' ? (
                 <Image
                   src={actor.image_url}
                   alt={actor.name}
                   width={160}
                   height={160}
+                  unoptimized={actor.image_url.includes('media-amazon.com')}
                   className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-purple-500/50 shadow-xl"
                 />
               ) : (
