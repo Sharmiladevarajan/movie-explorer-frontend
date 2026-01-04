@@ -135,12 +135,8 @@ HorizontalMovieScroll({
                       alt={movie.title}
                       fill
                       sizes="240px"
-                      unoptimized={movie.image_url.includes('media-amazon.com')}
-                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/card:scale-110 transition-all duration-500"
-                      onLoad={(e) => {
-                        // Fade in smoothly once loaded
-                        e.currentTarget.style.opacity = '0.9';
-                      }}
+                      unoptimized={true}
+                      className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover/card:scale-110 transition-all duration-500"
                       onError={(e) => {
                         // Fallback to default background if image fails to load
                         e.currentTarget.style.display = 'none';
